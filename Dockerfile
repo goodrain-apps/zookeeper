@@ -4,14 +4,32 @@ ENV ZK_USER=zookeeper \
     ZK_DATA_DIR=/var/lib/zookeeper/data \
     ZK_DATA_LOG_DIR=/var/lib/zookeeper/log \
     ZK_LOG_DIR=/var/log/zookeeper \
+    JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64 \
     ZK_REPLICAS=3 \
-    JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+    ZK_LOG_LEVEL=INFO \
+    ZK_CONF_DIR=/opt/zookeeper/conf \
+    ZK_CLIENT_PORT=2181 \
+    ZK_SERVER_PORT=2888 \
+    ZK_ELECTION_PORT=3888 \
+    ZK_INIT_LIMIT=10 \
+    ZK_SYNC_LIMIT=5 \
+    ZK_HEAP_SIZE=2G \
+    ZK_MAX_CLIENT_CNXNS=60 \
+    ZK_TICK_TIME=2000 \
+    ZK_MIN_SESSION_TIMEOUT=4000 \
+    ZK_MAX_SESSION_TIMEOUT=40000 \
+    ZK_SNAP_RETAIN_COUNT=3 \
+    ZK_PURGE_INTERVAL=0 \
+    ID_FILE="$ZK_DATA_DIR/myid" \
+    ZK_CONFIG_FILE="$ZK_CONF_DIR/zoo.cfg" \
+    LOGGER_PROPS_FILE="$ZK_CONF_DIR/log4j.properties" \
+    JAVA_ENV_FILE="$ZK_CONF_DIR/java.env"
 
 ARG GPG_KEY=C823E3E5B12AF29C67F81976F5CECB3CB5E9BD2D
 ARG ZK_DIST=zookeeper-3.4.10
 
 RUN set -x \
-    && apt update \
+    && apt-get update \
     && apt-get install -y openjdk-8-jre-headless wget netcat-openbsd \
     && wget -q "http://www.apache.org/dist/zookeeper/$ZK_DIST/$ZK_DIST.tar.gz" \
     && wget -q "http://www.apache.org/dist/zookeeper/$ZK_DIST/$ZK_DIST.tar.gz.asc" \
