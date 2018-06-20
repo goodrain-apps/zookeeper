@@ -198,7 +198,7 @@ function create_java_env() {
     rm -f $JAVA_ENV_FILE
     echo "Creating JVM configuration file"
     echo "ZOO_LOG_DIR=$ZK_LOG_DIR" >> $JAVA_ENV_FILE
-    echo "JVMFLAGS=${JAVA_OPTS}" >> $JAVA_ENV_FILE
+    echo "JVMFLAGS=\"${JAVA_OPTS}\"" >> $JAVA_ENV_FILE
     echo "Wrote JVM configuration to $JAVA_ENV_FILE"
 }
 
