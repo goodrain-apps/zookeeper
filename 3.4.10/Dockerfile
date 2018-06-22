@@ -57,6 +57,7 @@ RUN set -x \
 
 VOLUME /var/lib/zookeeper
 EXPOSE 2181
+COPY Shanghai /etc/localtime
 
 # Copy configuration generator script to bin
 COPY bootstrap.sh zkOk.sh zkMetrics.sh /opt/zookeeper/bin/
@@ -64,7 +65,6 @@ COPY bootstrap.sh zkOk.sh zkMetrics.sh /opt/zookeeper/bin/
 # Create a user for the zookeeper process and configure file system ownership
 # for necessary directories and symlink the distribution as a user executable
 RUN set -x \
-    && echo Asia/Shanghai > /etc/timezone \
     && useradd $ZK_USER \
     && [ `id -u $ZK_USER` -eq 1000 ] \
     && [ `id -g $ZK_USER` -eq 1000 ] \
