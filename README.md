@@ -1,114 +1,83 @@
-# 应用-kafka
+# rainbond-zookeeper
 
-## 什么是kafka
-Kafka是由Apache软件基金会开发的一个开源流处理平台，由Scala和Java编写。该项目的目标是为处理实时数据提供一个统一、高吞吐、低延迟的平台。其持久化层本质上是一个“按照分布式事务日志架构的大规模发布/订阅消息队列”，这使它作为企业级基础设施来处理流式数据非常有价值。
+## 什么是zookeeper
+Apache ZooKeeper是Apache软件基金会的一个软件项目，他为大型分布式计算提供开源的分布式配置服务、同步服务和命名注册。ZooKeeper曾经是Hadoop的一个子项目，但现在是一个独立的顶级项目。
+
+ZooKeeper的架构通过冗余服务实现高可用性。因此，如果第一次无应答，客户端就可以询问另一台ZooKeeper主机。ZooKeeper节点将它们的数据存储于一个分层的命名空间，非常类似于一个文件系统或一个前缀树结构。客户端可以在节点读写，从而以这种方式拥有一个共享的配置服务。更新是全序的。
 
 ## 部署说明
-* 该应用包含4个组件：kafka, kafka-dashboard, zookeeper, zookeeper-dashboard。
-* 安装该应用后，先要将zookeeper的实例数改为3，且目前只支持3个实例，否则kafka可能启动失败。
-* 在kafka中创建topic后，请小心使用伸缩功能，因为这可能影响您已保存到kafka中的数据，具体请参考[kafka分区与副本](https://kafka.apache.org/documentation)相关文档。
+安装该应用后，请将`zookeeper`的实例数改为3，否则`zookeeper`无法正常启动。
+
+## 修改实例数说明
+因为zookeeper应用具有特殊性，目前还不直接支持zookeeper的伸缩操作，如果要扩大或缩小zookeeper集群的规模，请按以下方式进行：
+1. 进入zookeeper应用管理页面，点击关闭按钮将zookeeper停止。
+1. 点击设置，修改环境变量ZK_REPLICAS的值为目标实例数。
+1. 点击伸缩，修改实例数量的值为目标实例数，要与上一步中的值相同。
+1. 最后点击启动，等待应用启动完毕。
 
 ## 配置说明
+
 配置项 | 默认值 | 描述
 ---|---|---
-LISTENERS | PLAINTEXT://:9093 | broker服务监听端口
-NUM_REPLICA_FETCHERS | 1 | 数据副本数量
-LOG_RETENTION_HOURS | 168 | 日志文件删除之前保留的小时数
-LOG_RETENTION_BYTES | -1 | 日志文件删除之前的最大大小，`-1`永不过期
-DEBUG | true | 打印应用启动脚本的执行日志
+ZK_CLIENT_PORT | 2181 | 客户端连接端口
+ZK_SERVER_PORT | 2888 | 节点间通信端口
+ZK_ELECTION_PORT | 3888 | 选举端口
+ZK_MIN_SESSION_TIMEOUT | 4000 | 最小会话超时
+ZK_MAX_SESSION_TIMEOUT | 40000 | 最大会话超时
+ZK_LOG_LEVEL | INFO | 日志输出级别
 
-如需设置更多参数，请参考[kafka官方文档](https://kafka.apache.org/documentation/#brokerconfigs)。
+如需设置更多参数，请参考[zookeeper官方文档](https://zookeeper.apache.org/doc/r3.4.12/zookeeperAdmin.html#sc_configuration)。
 
 ## 配置方式
-1. 在[kafka官方文档](https://kafka.apache.org/documentation/#brokerconfigs)找到需要的配置项，假设为：`my.config.name`。
+1. 在[zookeeper官方文档](https://zookeeper.apache.org/doc/r3.4.12/zookeeperAdmin.html#sc_configuration)找到需要的配置项，假设为：`my.config.name`。
 1. 将该配置项的名字全部大写且将`.`转为`_`，得到名字：`MY_CONFIG_NAME`。
 1. 在云帮管理页面中找到应用，将该配置填入到应用的自定义环境变量中，如下图所示。
     ![app-add-env](http://grstatic.oss-cn-shanghai.aliyuncs.com/images/docs/common/app-add-env.jpg)
 1. 重启应用生效。
 
-## kafka-dashboard使用说明
-1. 点击`kafka-dashboard`应用页面的访问按钮进入kafka仪表盘页面。
-1. 点击`Add Cluster`按钮
-1. 输入名字和zookeeper地址（固定地址：127.0.0.1:2181）
-    ![add-cluster](http://grstatic.oss-cn-shanghai.aliyuncs.com/images/docs/common/kafka-dashboard-add-cluster.jpg)
-1. 点击页面最下方的`Save`，然后就可以查看kafka集群的各个状态了。
-
 ## 基准测试
 
-### 启动kafka
-安装kafka，并将kafka实例数设置为3，每个实例分配1G内存。
+### 开始测试
+进入任意zookeeper节点执行以下命令：
+```
+cat > test.sh <<'EOF'
+#!/bin/bash
+zkCli.sh rmr /test &> /dev/null
+zkCli.sh create /test 0 &> /dev/null
+for i in `seq 1 100`; do
+  ok=`zkCli.sh create /test/$i $i 2>&1 | tail -1 | grep -e "Created " | wc -l`
+  if [[ x$ok == x1 ]]; then
+      echo -e "$i\tcreate\tsuccess"
+  else
+      echo -e "$i\tcreate\tfailed"
+  fi
+  
+  ok=`zkCli.sh rmr /test/$i 2>&1 | tail -1 | grep -e "WatchedEvent " | wc -l`
+  if [[ x$ok == x1 ]]; then
+      echo -e "$i\tdelete\tsuccess"
+  else
+      echo -e "$i\tdelete\tfailed"
+  fi
+done
 
-### 启动kafka-client
-因为kafka的生产者和消费者也会占用一部分内存，所以我们让这两个进程运行在一个单独的容器中，首先从源码安装kafka-clinet，并将内存设置为1G：
-```
-https://github.com/goodrain-apps/kafka.git?dir=client
-```
-
-以下测试命令全部在kafka-client容器中执行。
-
-### 创建topic
-```
-kafka-topics.sh --create \
---zookeeper 127.0.0.1:2181 \
---replication-factor 3 \
---partitions 3 \
---topic test1
-```
-
-### 启动消费者
-```
-kafka-console-consumer.sh \
---zookeeper 127.0.0.1:2181 \
---from-beginning \
---topic test1 > /dev/null
-```
-
-### 启动生产者
-在kafka容器中执行以下命令，获取kafka的所有节点：
-```
-net lookuprsv --format "%s:9093" $SERVICE_NAME
+zkCli.sh rmr /test &> /dev/null
+EOF
+chmod +x test.sh
+{ time ./test.sh; } &> /var/lib/zookeeper/result.log &
 ```
 
-将得到的值替换到下列中的`<broker_list>`，然后在kafka-client中执行：
+### 执行结果
 ```
-time kafka-producer-perf-test.sh \
---topic test1 \
---num-records $((10000)) \
---throughput $((100)) \
---record-size $((1024*100)) \
---producer-props \
-acks=all \
-bootstrap.servers=<broker_list> \
-buffer.memory=$((1024*1024*1024)) \
-compression.type=none \
-batch.size=0
-```
+tail /var/lib/zookeeper/result.log
+98      create  success
+98      delete  success
+99      create  success
+99      delete  success
+100     create  success
+100     delete  success
 
-### 生产者执行结果
-```
-502 records sent, 100.3 records/sec (9.79 MB/sec), 16.6 ms avg latency, 179.0 max latency.
-501 records sent, 100.1 records/sec (9.77 MB/sec), 4.5 ms avg latency, 47.0 max latency.
-500 records sent, 99.9 records/sec (9.76 MB/sec), 3.6 ms avg latency, 34.0 max latency.
-500 records sent, 99.9 records/sec (9.76 MB/sec), 57.1 ms avg latency, 696.0 max latency.
-501 records sent, 100.0 records/sec (9.76 MB/sec), 4.0 ms avg latency, 39.0 max latency.
-501 records sent, 100.0 records/sec (9.77 MB/sec), 3.0 ms avg latency, 24.0 max latency.
-501 records sent, 100.1 records/sec (9.78 MB/sec), 3.0 ms avg latency, 22.0 max latency.
-500 records sent, 99.9 records/sec (9.76 MB/sec), 4.0 ms avg latency, 70.0 max latency.
-501 records sent, 100.1 records/sec (9.78 MB/sec), 3.0 ms avg latency, 12.0 max latency.
-499 records sent, 99.6 records/sec (9.73 MB/sec), 3.5 ms avg latency, 47.0 max latency.
-502 records sent, 100.3 records/sec (9.79 MB/sec), 4.0 ms avg latency, 56.0 max latency.
-500 records sent, 100.0 records/sec (9.76 MB/sec), 3.8 ms avg latency, 58.0 max latency.
-501 records sent, 100.1 records/sec (9.78 MB/sec), 3.3 ms avg latency, 34.0 max latency.
-501 records sent, 100.1 records/sec (9.77 MB/sec), 3.4 ms avg latency, 29.0 max latency.
-500 records sent, 99.9 records/sec (9.75 MB/sec), 3.3 ms avg latency, 36.0 max latency.
-500 records sent, 100.0 records/sec (9.76 MB/sec), 19.2 ms avg latency, 527.0 max latency.
-501 records sent, 100.1 records/sec (9.77 MB/sec), 3.2 ms avg latency, 30.0 max latency.
-501 records sent, 100.0 records/sec (9.77 MB/sec), 61.4 ms avg latency, 677.0 max latency.
-501 records sent, 100.0 records/sec (9.77 MB/sec), 4.3 ms avg latency, 61.0 max latency.
-10000 records sent, 99.995000 records/sec (9.77 MB/sec), 10.61 ms avg latency, 696.00 ms max latency, 3 ms 50th, 14 ms 95th, 308 ms 99th, 649 ms 99.9th.
-
-real    1m41.007s
-user    0m9.354s
-sys     0m2.324s
+real    2m21.844s
+user    1m21.866s
+sys     0m23.583s
 ```
 
