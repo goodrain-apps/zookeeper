@@ -26,7 +26,6 @@ ZK_ELECTION_PORT=${ZK_ELECTION_PORT:-3888}
 ZK_TICK_TIME=${ZK_TICK_TIME:-2000}
 ZK_INIT_LIMIT=${ZK_INIT_LIMIT:-10}
 ZK_SYNC_LIMIT=${ZK_SYNC_LIMIT:-5}
-ZK_HEAP_SIZE=${ZK_HEAP_SIZE:-1G}
 ZK_MAX_CLIENT_CNXNS=${ZK_MAX_CLIENT_CNXNS:-60}
 ZK_MIN_SESSION_TIMEOUT=${ZK_MIN_SESSION_TIMEOUT:- $((ZK_TICK_TIME*2))}
 ZK_MAX_SESSION_TIMEOUT=${ZK_MAX_SESSION_TIMEOUT:- $((ZK_TICK_TIME*20))}
@@ -78,7 +77,6 @@ function validate_env() {
     echo "ZK_MAX_CLIENT_CNXNS=$ZK_MAX_CLIENT_CNXNS"
     echo "ZK_MIN_SESSION_TIMEOUT=$ZK_MIN_SESSION_TIMEOUT"
     echo "ZK_MAX_SESSION_TIMEOUT=$ZK_MAX_SESSION_TIMEOUT"
-    echo "ZK_HEAP_SIZE=$ZK_HEAP_SIZE"
     echo "ZK_SNAP_RETAIN_COUNT=$ZK_SNAP_RETAIN_COUNT"
     echo "ZK_PURGE_INTERVAL=$ZK_PURGE_INTERVAL"
     echo "ENSEMBLE"
@@ -150,57 +148,47 @@ function create_log_props () {
 # set default_java_mem_opts
 case ${MEMORY_SIZE:-small} in
     "micro")
-       ZK_HEAP_SIZE=90M
        export default_java_mem_opts="-Xms90m -Xmx90m -Xss512k  -XX:MaxDirectMemorySize=12M"
        echo "Optimizing java process for 128M Memory...." >&2
        ;;
     "small")
-       ZK_HEAP_SIZE=180M
        export default_java_mem_opts="-Xms180m -Xmx180m -Xss512k -XX:MaxDirectMemorySize=24M "
        echo "Optimizing java process for 256M Memory...." >&2
        ;;
     "medium")
-       ZK_HEAP_SIZE=360M
        export default_java_mem_opts="-Xms360m -Xmx360m -Xss512k -XX:MaxDirectMemorySize=48M"
        echo "Optimizing java process for 512M Memory...." >&2
        ;;
     "large")
-       ZK_HEAP_SIZE=720M
        export default_java_mem_opts="-Xms720m -Xmx720m -Xss512k -XX:MaxDirectMemorySize=96M "
        echo "Optimizing java process for 1G Memory...." >&2
        ;;
     "2xlarge")
-       ZK_HEAP_SIZE=1420M
        export default_java_mem_opts="-Xms1420m -Xmx1420m -Xss512k -XX:MaxDirectMemorySize=192M"
        echo "Optimizing java process for 2G Memory...." >&2
        ;;
     "4xlarge")
-       ZK_HEAP_SIZE=2480M
        export default_java_mem_opts="-Xms2840m -Xmx2840m -Xss512k -XX:MaxDirectMemorySize=384M "
        echo "Optimizing java process for 4G Memory...." >&2
        ;;
     "8xlarge")
-       ZK_HEAP_SIZE=5680M
        export default_java_mem_opts="-Xms5680m -Xmx5680m -Xss512k -XX:MaxDirectMemorySize=768M"
        echo "Optimizing java process for 8G Memory...." >&2
        ;;
     16xlarge|32xlarge|64xlarge)
-       ZK_HEAP_SIZE=8G
        export default_java_mem_opts="-Xms8G -Xmx8G -Xss512k -XX:MaxDirectMemorySize=1536M"
        echo "Optimizing java process for biger Memory...." >&2
        ;;
     *)
-       ZK_HEAP_SIZE=128M
        export default_java_mem_opts="-Xms128m -Xmx128m -Xss512k -XX:MaxDirectMemorySize=24M"
        echo "Optimizing java process for 256M Memory...." >&2
        ;;
 esac
 
 if [[ "${JAVA_OPTS}" == *-Xmx* ]]; then
-  export JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS:-"-Dfile.encoding=UTF-8"}
+  export JAVA_OPTS="${JAVA_OPTS} -Dfile.encoding=UTF-8"
 else
-  default_java_opts="${default_java_mem_opts} -Dfile.encoding=UTF-8"
-  export JAVA_OPTS="${default_java_opts} $JAVA_OPTS"
+  export JAVA_OPTS="${default_java_mem_opts} $JAVA_OPTS -Dfile.encoding=UTF-8"
 fi
   
 function create_java_env() {
