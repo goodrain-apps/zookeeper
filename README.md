@@ -35,7 +35,7 @@ ZK_LOG_LEVEL | INFO | 日志输出级别
     ![app-add-env](http://grstatic.oss-cn-shanghai.aliyuncs.com/images/docs/common/app-add-env.jpg)
 1. 重启应用生效。
 
-## 基准测试
+## 基准测试-集群内部连接
 
 ### 开始测试
 进入任意zookeeper节点执行以下命令：
@@ -79,5 +79,51 @@ tail /var/lib/zookeeper/result.log
 real    2m21.844s
 user    1m21.866s
 sys     0m23.583s
+```
+
+## 基准测试-集群外部连接
+
+### 开始测试
+在集群外安装zookeeper，在`$ZOOKEEPER_HOME`中执行以下命令：
+```
+cat > test.sh <<'EOF'
+#!/bin/bash
+bin/zkCli.sh -server ali-sh-s1.goodrain.net:21056 rmr /test &> /dev/null
+bin/zkCli.sh -server ali-sh-s1.goodrain.net:21056 create /test 0 &> /dev/null
+for i in `seq 1 100`; do
+  ok=`bin/zkCli.sh -server ali-sh-s1.goodrain.net:21056 create /test/$i $i 2>&1 | tail -1 | grep -e "Created " | wc -l`
+  if [[ x$ok == x1 ]]; then
+      echo -e "$i\tcreate\tsuccess"
+  else
+      echo -e "$i\tcreate\tfailed"
+  fi
+  
+  ok=`bin/zkCli.sh -server ali-sh-s1.goodrain.net:21056 rmr /test/$i 2>&1 | tail -1 | grep -e "WatchedEvent " | wc -l`
+  if [[ x$ok == x1 ]]; then
+      echo -e "$i\tdelete\tsuccess"
+  else
+      echo -e "$i\tdelete\tfailed"
+  fi
+done
+
+bin/zkCli.sh -server ali-sh-s1.goodrain.net:21056 rmr /test &> /dev/null
+EOF
+chmod +x test.sh
+{ time ./test.sh; } &> result.log &
+```
+
+### 执行结果
+```
+tail result.log
+98	create	success
+98	delete	success
+99	create	success
+99	delete	success
+100	create	success
+100	delete	success
+
+real	2m34.851s
+user	1m34.507s
+sys	0m12.563s
 ```
 
