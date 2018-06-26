@@ -84,7 +84,7 @@ sys     0m23.583s
 ## 基准测试-集群外部连接
 
 ### 开始测试
-在集群外安装zookeeper，在`$ZOOKEEPER_HOME`中执行以下命令：
+在集群外安装zookeeper，在`$ZOOKEEPER_HOME`中执行以下命令，假设zookeeper的外部端口为`ali-sh-s1.goodrain.net:21056`：
 ```
 cat > test.sh <<'EOF'
 #!/bin/bash
